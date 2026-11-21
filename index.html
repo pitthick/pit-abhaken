@@ -63,7 +63,7 @@ app.innerHTML =
 '<h1>Was ist erledigt?</h1><div class="sub">PIT Morgenübersicht ' + esc(d.d || "") + ' · einzeln abhaken, dann unten bestätigen</div>' +
 '<div class="alle"><span id="zahl">0 von ' + d.p.length + ' ausgewählt</span><button id="alle" type="button">Alle auswählen</button></div>' +
 '<ul>' + d.p.map((p, i) =>
-'<li><label><input type="checkbox" data-i="' + i + '"><span class="txt"><span class="nr">' + esc(p[0]) + '</span> ' + esc(p[1]) +
+'<li><label><input type="checkbox" data-i="' + i + '"><span class="txt">' + esc(p[1]) +
 '</span><span class="betrag">' + esc(p[2] || "") + '</span></label></li>').join("") + '</ul>' +
 '<div class="datum"><span>Erledigt am</span><input type="date" id="tag" value="' + iso + '" max="' + iso + '"></div>' +
 '<div class="hinweis">Nach „Bestätigen“ öffnet sich eine fertige Mail an dich – nur noch absenden. PIT hakt es beim nächsten Morgenlauf ab.</div>';
@@ -80,6 +80,8 @@ alle.textContent = n === boxen.length ? "Keine auswählen" : "Alle auswählen";
 }
 boxen.forEach(b => b.addEventListener("change", neu));
 alle.addEventListener("click", () => { const an = boxen.some(b => !b.checked); boxen.forEach(b => b.checked = an); neu(); });
+(d.s || []).forEach(i => { if (boxen[i]) boxen[i].checked = true; });
+neu();
 ok.addEventListener("click", () => {
 const t = document.getElementById("tag").value.split("-");
 const datum = t.length === 3 ? t[2] + "." + t[1] + "." + t[0] : "";
