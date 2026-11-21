@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>PIT Abhaken</title>
+<style>
+:root { --bg:#f4f5f7; --card:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb; --ok:#2e7d32; --okhell:#e8f5e9; }
+@media (prefers-color-scheme: dark) {
+:root:not([data-theme="light"]) { --bg:#111418; --card:#1b2027; --text:#e5e7eb; --muted:#9ca3af; --line:#2d333b; --ok:#4caf50; --okhell:#1c2b1f; }
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font-family:"Segoe UI",Arial,sans-serif; }
+main { max-width:560px; margin:0 auto; padding:16px 16px 120px; }
+h1 { font-size:20px; margin:4px 0 2px; }
+.sub { color:var(--muted); font-size:13px; margin-bottom:14px; }
+.alle { display:flex; justify-content:space-between; align-items:center; font-size:14px; color:var(--muted); margin:0 2px 8px; }
+.alle button { background:none; border:none; color:var(--ok); font-size:14px; font-weight:600; padding:6px 0; cursor:pointer; }
+ul { list-style:none; margin:0; padding:0; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+li + li { border-top:1px solid var(--line); }
+label { display:flex; gap:12px; align-items:flex-start; padding:14px 12px; cursor:pointer; }
+li.an { background:var(--okhell); }
+input[type=checkbox] { width:24px; height:24px; margin:0; flex:none; accent-color:var(--ok); }
+.txt { flex:1; font-size:15px; line-height:1.35; }
+.nr { color:var(--muted); font-size:12px; }
+.betrag { font-weight:700; white-space:nowrap; font-size:15px; }
+.datum { margin-top:14px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; font-size:14px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.datum input { font-size:15px; padding:6px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text); }
+.leiste { position:fixed; left:0; right:0; bottom:0; background:var(--card); border-top:1px solid var(--line); padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
+.leiste div { max-width:560px; margin:0 auto; }
+#ok { width:100%; padding:14px; font-size:17px; font-weight:700; border:none; border-radius:26px; background:var(--ok); color:#fff; cursor:pointer; }
+#ok:disabled { opacity:.4; cursor:default; }
+.hinweis { color:var(--muted); font-size:12px; margin-top:12px; }
+.fehler { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div class="leiste" id="leiste" hidden><div><button id="ok" disabled>Bestätigen</button></div></div>
+<script>
+// Die Posten kommen nur aus dem Link (#...) der Morgenmail. Der Teil nach # wird nie an den Server geschickt.
+(function () {
+const app = document.getElementById("app");
+function lesen() {
+try {
+let s = location.hash.slice(1).replace(/-/g, "+").replace(/_/g, "/");
+while (s.length % 4) s += "=";
+const bytes = Uint8Array.from(atob(s), c => c.charCodeAt(0));
+return JSON.parse(new TextDecoder().decode(bytes));
+} catch (e) { return null; }
+}
+const d = lesen();
+if (!d || !Array.isArray(d.p) || !d.t) {
+app.innerHTML = '<h1>PIT Abhaken</h1><div class="fehler">Diese Seite öffnest du über den Knopf „Abhaken“ in der PIT-Morgenmail.</div>';
+return;
+}
+const heute = new Date();
+const iso = heute.getFullYear() + "-" + String(heute.getMonth() + 1).padStart(2, "0") + "-" + String(heute.getDate()).padStart(2, "0");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+app.innerHTML =
+'<h1>Was ist erledigt?</h1><div class="sub">PIT Morgenübersicht ' + esc(d.d || "") + ' · einzeln abhaken, dann unten bestätigen</div>' +
+'<div class="alle"><span id="zahl">0 von ' + d.p.length + ' ausgewählt</span><button id="alle" type="button">Alle auswählen</button></div>' +
+'<ul>' + d.p.map((p, i) =>
+'<li><label><input type="checkbox" data-i="' + i + '"><span class="txt"><span class="nr">' + esc(p[0]) + '</span> ' + esc(p[1]) +
+'</span><span class="betrag">' + esc(p[2] || "") + '</span></label></li>').join("") + '</ul>' +
+'<div class="datum"><span>Erledigt am</span><input type="date" id="tag" value="' + iso + '" max="' + iso + '"></div>' +
+'<div class="hinweis">Nach „Bestätigen“ öffnet sich eine fertige Mail an dich – nur noch absenden. PIT hakt es beim nächsten Morgenlauf ab.</div>';
+document.getElementById("leiste").hidden = false;
+const boxen = [...app.querySelectorAll("input[type=checkbox]")];
+const ok = document.getElementById("ok"), zahl = document.getElementById("zahl"), alle = document.getElementById("alle");
+function neu() {
+const n = boxen.filter(b => b.checked).length;
+boxen.forEach(b => b.closest("li").classList.toggle("an", b.checked));
+zahl.textContent = n + " von " + boxen.length + " ausgewählt";
+ok.disabled = n === 0;
+ok.textContent = n ? "Bestätigen (" + n + ")" : "Bestätigen";
+alle.textContent = n === boxen.length ? "Keine auswählen" : "Alle auswählen";
+}
+boxen.forEach(b => b.addEventListener("change", neu));
+alle.addEventListener("click", () => { const an = boxen.some(b => !b.checked); boxen.forEach(b => b.checked = an); neu(); });
+ok.addEventListener("click", () => {
+const t = document.getElementById("tag").value.split("-");
+const datum = t.length === 3 ? t[2] + "." + t[1] + "." + t[0] : "";
+const zeilen = boxen.filter(b => b.checked).map(b => {
+const p = d.p[+b.dataset.i];
+return "erledigt " + p[0] + ": " + p[1] + (p[2] ? " " + p[2] : "") + " [PIT-Code: " + p[3] + "] " + datum;
+});
+const body = "Abgehakt über die PIT-Seite – bitte so absenden.\n\n" + zeilen.join("\n");
+location.href = "mailto:" + encodeURIComponent(d.t) + "?subject=" + encodeURIComponent("AW: Zahlungserinnerung – erledigt") + "&body=" + encodeURIComponent(body);
+});
+})();
+</script>
+</body>
+</html>
